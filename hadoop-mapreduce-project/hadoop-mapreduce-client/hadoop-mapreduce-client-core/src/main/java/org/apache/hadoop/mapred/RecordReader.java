@@ -22,6 +22,7 @@ import java.io.IOException;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.ryan.TimeLog;
 
 /**
  * <code>RecordReader</code> reads &lt;key, value&gt; pairs from an 
@@ -85,4 +86,75 @@ public interface RecordReader<K, V> {
    * @throws IOException
    */
   float getProgress() throws IOException;
+
+  public class RecordReaderWrapper<K, V> implements RecordReader<K, V> {
+
+    private final TimeLog timeLog = new TimeLog(RecordReader.class);
+    private final RecordReader<K, V> wrapped;
+
+    public RecordReaderWrapper(RecordReader<K, V> wrapped) {
+      this.wrapped = wrapped;
+    }
+
+    @Override
+    public boolean next(K key, V value) throws IOException {
+      timeLog.start("next(K key, V value)", TimeLog.Resource.GENERAL_IO);
+      try {
+        return wrapped.next(key, value);
+      } finally {
+        timeLog.end("next(K key, V value)", TimeLog.Resource.GENERAL_IO);
+      }
+    }
+
+    @Override
+    public K createKey() {
+      timeLog.start("createKey()");
+      try {
+        return wrapped.createKey();
+      } finally {
+        timeLog.end("createKey()");
+      }
+    }
+
+    @Override
+    public V createValue() {
+      timeLog.start("createValue()");
+      try {
+        return wrapped.createValue();
+      } finally {
+        timeLog.end("createValue()");
+      }
+    }
+
+    @Override
+    public long getPos() throws IOException {
+      timeLog.start("getPos()");
+      try {
+        return wrapped.getPos();
+      } finally {
+        timeLog.end("getPos()");
+      }
+    }
+
+    @Override
+    public void close() throws IOException {
+      timeLog.start("close()", TimeLog.Resource.GENERAL_IO);
+      try {
+        wrapped.close();
+      } finally {
+        timeLog.end("close()", TimeLog.Resource.GENERAL_IO);
+      }
+    }
+
+    @Override
+    public float getProgress() throws IOException {
+      timeLog.start("getProgress()");
+      try {
+        return wrapped.getProgress();
+      } finally {
+        timeLog.end("getProgress()");
+      }
+    }
+  }
+
 }

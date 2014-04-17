@@ -38,6 +38,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.io.nativeio.NativeIO;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.util.Progressable;
 import org.apache.hadoop.util.Shell;
 import org.apache.hadoop.util.StringUtils;
@@ -121,6 +122,7 @@ public class RawLocalFileSystem extends FileSystem {
   class LocalFSFileInputStream extends FSInputStream implements HasFileDescriptor {
     private FileInputStream fis;
     private long position;
+    private TimeLog timeLog = new TimeLog(LocalFSFileInputStream.class);
 
     public LocalFSFileInputStream(Path f) throws IOException {
       this.fis = new TrackingFileInputStream(pathToFile(f));
@@ -154,6 +156,7 @@ public class RawLocalFileSystem extends FileSystem {
     
     @Override
     public int read() throws IOException {
+      timeLog.start("read()");
       try {
         int value = fis.read();
         if (value >= 0) {
@@ -162,11 +165,14 @@ public class RawLocalFileSystem extends FileSystem {
         return value;
       } catch (IOException e) {                 // unexpected exception
         throw new FSError(e);                   // assume native fs error
+      } finally {
+        timeLog.end("read()");
       }
     }
     
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
+      timeLog.start("read(byte[] b, int off, int len)");
       try {
         int value = fis.read(b, off, len);
         if (value > 0) {
@@ -175,6 +181,8 @@ public class RawLocalFileSystem extends FileSystem {
         return value;
       } catch (IOException e) {                 // unexpected exception
         throw new FSError(e);                   // assume native fs error
+      } finally {
+        timeLog.end("read(byte[] b, int off, int len)");
       }
     }
     
@@ -182,10 +190,13 @@ public class RawLocalFileSystem extends FileSystem {
     public int read(long position, byte[] b, int off, int len)
       throws IOException {
       ByteBuffer bb = ByteBuffer.wrap(b, off, len);
+      timeLog.start("read(long position, byte[] b, int off, int len)");
       try {
         return fis.getChannel().read(bb, position);
       } catch (IOException e) {
         throw new FSError(e);
+      } finally {
+        timeLog.end("read(long position, byte[] b, int off, int len)");
       }
     }
     
@@ -218,6 +229,7 @@ public class RawLocalFileSystem extends FileSystem {
    *********************************************************/
   class LocalFSFileOutputStream extends OutputStream {
     private FileOutputStream fos;
+    private TimeLog timeLog = new TimeLog(LocalFSFileOutputStream.class);
     
     private LocalFSFileOutputStream(Path f, boolean append) throws IOException {
       this.fos = new FileOutputStream(pathToFile(f), append);
@@ -231,20 +243,26 @@ public class RawLocalFileSystem extends FileSystem {
     @Override
     public void flush() throws IOException { fos.flush(); }
     @Override
-    public void write(byte[] b, int off, int len) throws IOException {
+    public void write(byte[] b, int off, int len) throws IOException { //TODO(ryan) log this -> reduce output for merge
+      timeLog.start("write(byte[] b, int off, int len)");
       try {
         fos.write(b, off, len);
       } catch (IOException e) {                // unexpected exception
         throw new FSError(e);                  // assume native fs error
+      } finally {
+        timeLog.end("write(byte[] b, int off, int len)");
       }
     }
     
     @Override
     public void write(int b) throws IOException {
+      timeLog.start("write(int b)");
       try {
         fos.write(b);
       } catch (IOException e) {              // unexpected exception
         throw new FSError(e);                // assume native fs error
+      } finally {
+        timeLog.end("write(int b)");
       }
     }
   }

@@ -46,6 +46,7 @@ import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.block.InvalidBlockTokenException;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.DataChecksum;
 
@@ -81,7 +82,8 @@ import com.google.common.annotations.VisibleForTesting;
 public class RemoteBlockReader2  implements BlockReader {
 
   static final Log LOG = LogFactory.getLog(RemoteBlockReader2.class);
-  
+  private TimeLog timeLog = new TimeLog(RemoteBlockReader2.class);
+
   final private Peer peer;
   final private DatanodeID datanodeID;
   final private PeerCache peerCache;
@@ -132,7 +134,12 @@ public class RemoteBlockReader2  implements BlockReader {
                                throws IOException {
 
     if (curDataSlice == null || curDataSlice.remaining() == 0 && bytesNeededToFinish > 0) {
-      readNextPacket();
+      try {
+        timeLog.start("readNextPacket()");
+        readNextPacket();
+      } finally {
+        timeLog.end("readNextPacket()");
+      }
     }
     if (curDataSlice.remaining() == 0) {
       // we're at EOF now
@@ -149,7 +156,12 @@ public class RemoteBlockReader2  implements BlockReader {
   @Override
   public int read(ByteBuffer buf) throws IOException {
     if (curDataSlice == null || curDataSlice.remaining() == 0 && bytesNeededToFinish > 0) {
-      readNextPacket();
+      try {
+        timeLog.start("readNextPacket()");
+        readNextPacket();
+      } finally {
+        timeLog.end("readNextPacket()");
+      }
     }
     if (curDataSlice.remaining() == 0) {
       // we're at EOF now

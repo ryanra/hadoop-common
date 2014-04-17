@@ -61,6 +61,7 @@ import org.apache.hadoop.mapreduce.MRConfig;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.lib.reduce.WrappedReducer;
 import org.apache.hadoop.mapreduce.task.ReduceContextImpl;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.yarn.util.ResourceCalculatorProcessTree;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.util.Progress;
@@ -77,6 +78,9 @@ import org.apache.hadoop.util.StringUtils;
 abstract public class Task implements Writable, Configurable {
   private static final Log LOG =
     LogFactory.getLog(Task.class);
+
+  private static final TimeLog timeLog = new TimeLog(Task.class);
+
 
   public static String MERGED_OUTPUT_PREFIX = ".merged";
   public static final long DEFAULT_COMBINE_RECORDS_BEFORE_PROGRESS = 10000;
@@ -1052,23 +1056,28 @@ abstract public class Task implements Writable, Configurable {
   public void statusUpdate(TaskUmbilicalProtocol umbilical) 
   throws IOException {
     int retries = MAX_RETRIES;
-    while (true) {
-      try {
-        if (!umbilical.statusUpdate(getTaskID(), taskStatus)) {
-          LOG.warn("Parent died.  Exiting "+taskId);
-          System.exit(66);
-        }
-        taskStatus.clearStatus();
-        return;
-      } catch (InterruptedException ie) {
-        Thread.currentThread().interrupt(); // interrupt ourself
-      } catch (IOException ie) {
-        LOG.warn("Failure sending status update: " + 
-                  StringUtils.stringifyException(ie));
-        if (--retries == 0) {
-          throw ie;
+    try {
+      timeLog.start("statusUpdate()");
+      while (true) {
+        try {
+          if (!umbilical.statusUpdate(getTaskID(), taskStatus)) {
+            LOG.warn("Parent died.  Exiting "+taskId);
+            System.exit(66);
+          }
+          taskStatus.clearStatus();
+          return;
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt(); // interrupt ourself
+        } catch (IOException ie) {
+          LOG.warn("Failure sending status update: " +
+                    StringUtils.stringifyException(ie));
+          if (--retries == 0) {
+            throw ie;
+          }
         }
       }
+    } finally {
+      timeLog.end("statusUpdate()");
     }
   }
   

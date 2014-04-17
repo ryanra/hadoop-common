@@ -36,11 +36,14 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.SecureIOUtils;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.util.PureJavaCrc32;
 
 @InterfaceAudience.LimitedPrivate({"MapReduce"})
 @InterfaceStability.Unstable
 public class SpillRecord {
+
+  private static final TimeLog TIMER = new TimeLog(SpillRecord.class);
 
   /** Backing store */
   private final ByteBuffer buf;
@@ -133,6 +136,7 @@ public class SpillRecord {
     CheckedOutputStream chk = null;
     final FSDataOutputStream out = rfs.create(loc);
     try {
+      TIMER.start("writeToFile()");
       if (crc != null) {
         crc.reset();
         chk = new CheckedOutputStream(out, crc);
@@ -142,6 +146,7 @@ public class SpillRecord {
         out.write(buf.array());
       }
     } finally {
+      TIMER.end("writeToFile()");
       if (chk != null) {
         chk.close();
       } else {

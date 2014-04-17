@@ -24,6 +24,7 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 
 import org.apache.hadoop.mapred.Task.TaskReporter;
+import org.apache.hadoop.ryan.TimeLog;
 
 @InterfaceAudience.LimitedPrivate({"MapReduce"})
 @InterfaceStability.Unstable
@@ -62,4 +63,55 @@ public interface MapOutputCollector<K, V> {
       return reporter;
     }
   }
+
+  public class MapOutputCollectorWrapper<K, V> implements MapOutputCollector<K, V> {
+
+    private final MapOutputCollector<K, V> wrapped;
+    private final TimeLog timeLog = new TimeLog(MapOutputCollector.class);
+
+    public MapOutputCollectorWrapper(MapOutputCollector<K, V> wrapped) {
+      this.wrapped = wrapped;
+    }
+
+    @Override
+    public void init(Context context) throws IOException, ClassNotFoundException {
+      timeLog.start("init(Context context)");
+      try {
+        wrapped.init(context);
+      } finally {
+        timeLog.end("init(Context context)");
+      }
+    }
+
+    @Override
+    public void collect(K key, V value, int partition) throws IOException, InterruptedException {
+      timeLog.start("collect(K key, V value, int partition)");
+      try {
+        wrapped.collect(key, value, partition);
+      } finally {
+        timeLog.end("collect(K key, V value, int partition)");
+      }
+    }
+
+    @Override
+    public void close() throws IOException, InterruptedException {
+      timeLog.start("close()", TimeLog.Resource.DISK);
+      try {
+        wrapped.close();
+      } finally {
+        timeLog.end("close()", TimeLog.Resource.DISK);
+      }
+    }
+
+    @Override
+    public void flush() throws IOException, InterruptedException, ClassNotFoundException {
+      timeLog.start("flush()", TimeLog.Resource.DISK);
+      try {
+        wrapped.flush();
+      } finally {
+        timeLog.end("flush()", TimeLog.Resource.DISK);
+      }
+    }
+  }
+
 }

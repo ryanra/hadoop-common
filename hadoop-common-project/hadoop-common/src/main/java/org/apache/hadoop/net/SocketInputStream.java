@@ -55,6 +55,8 @@ public class SocketInputStream extends InputStream
     @Override
     int performIO(ByteBuffer buf) throws IOException {
       return channel.read(buf);
+      // here is where an actual network IO (read for mapper) happens? or are we just reading buffered data from
+      // OS's or java's impl
     }
   }
   

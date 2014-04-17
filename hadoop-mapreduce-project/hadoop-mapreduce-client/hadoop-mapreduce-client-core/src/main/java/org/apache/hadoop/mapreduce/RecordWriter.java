@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.ryan.TimeLog;
 
 /**
  * <code>RecordWriter</code> writes the output &lt;key, value&gt; pairs 
@@ -54,4 +55,35 @@ public abstract class RecordWriter<K, V> {
    */ 
   public abstract void close(TaskAttemptContext context
                              ) throws IOException, InterruptedException;
+
+  public static class RecordWriterWrapper<K, V> extends RecordWriter<K, V> {
+
+    private final RecordWriter<K, V> wrapped;
+    private final TimeLog timeLog = new TimeLog(RecordWriter.class);
+
+    public RecordWriterWrapper(RecordWriter<K, V> wrapped) {
+      this.wrapped = wrapped;
+    }
+
+    @Override
+    public void write(K key, V value) throws IOException, InterruptedException {
+      try {
+        timeLog.start("RecordWriter.write(key, value)");
+        wrapped.write(key, value);
+      } finally {
+        timeLog.end("RecordWriter.write(key, value)");
+      }
+    }
+
+    @Override
+    public void close(TaskAttemptContext context) throws IOException, InterruptedException {
+      try {
+        timeLog.start("RecordWriter.close(context)");
+        wrapped.close(context);
+      } finally {
+        timeLog.end("RecordWriter.close(context)");
+      }
+    }
+  }
+
 }

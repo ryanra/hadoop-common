@@ -24,6 +24,7 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.task.annotation.Checkpointable;
+import org.apache.hadoop.ryan.TimeLog;
 
 import java.util.Iterator;
 
@@ -123,6 +124,8 @@ import java.util.Iterator;
 @InterfaceStability.Stable
 public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
 
+  private TimeLog timeLog = new TimeLog(Reducer.class);
+
   /**
    * The <code>Context</code> passed on to the {@link Reducer} implementations.
    */
@@ -167,8 +170,8 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
   public void run(Context context) throws IOException, InterruptedException {
     setup(context);
     try {
-      while (context.nextKey()) {
-        reduce(context.getCurrentKey(), context.getValues(), context);
+      while (loggingNextKey(context)) {
+        reduce(loggingCurrentKey(context), new WrappingIterable<VALUEIN>(loggingValues(context)), context);
         // If a back up store is used, reset it
         Iterator<VALUEIN> iter = context.getValues().iterator();
         if(iter instanceof ReduceContext.ValueIterator) {
@@ -179,4 +182,90 @@ public class Reducer<KEYIN,VALUEIN,KEYOUT,VALUEOUT> {
       cleanup(context);
     }
   }
+
+  private boolean loggingNextKey(Context context) throws IOException, InterruptedException {
+    try {
+      timeLog.start("context.nextKey()");
+      return context.nextKey();
+    } finally {
+      timeLog.end("context.nextKey()");
+    }
+  }
+
+  private KEYIN loggingCurrentKey(Context context) throws IOException, InterruptedException {
+    try {
+      timeLog.start("context.getCurrentKey()");
+      return context.getCurrentKey();
+    } finally {
+      timeLog.end("context.getCurrentKey()");
+    }
+  }
+
+  private Iterable<VALUEIN> loggingValues(Context context) throws IOException, InterruptedException {
+    try {
+      timeLog.start("context.getValues()");
+      return context.getValues();
+    } finally {
+      timeLog.end("context.getValues()");
+    }
+  }
+
+  private class WrappingIterable<T> implements Iterable<T> {
+
+    private final Iterable<T> wrapped;
+
+    public WrappingIterable(Iterable<T> wrapped) {
+      this.wrapped = wrapped;
+    }
+
+    @Override
+    public Iterator<T> iterator() {
+      try {
+        timeLog.start("Iterable.iterator()");
+        return wrapped.iterator();
+      } finally {
+        timeLog.end("Iterable.iterator()");
+      }
+    }
+  }
+
+  private class WrappingIterator<T> implements Iterator<T> {
+
+    private final Iterator<T> wrapped;
+
+    public WrappingIterator(Iterator<T> wrapped) {
+      this.wrapped = wrapped;
+    }
+
+    @Override
+    public boolean hasNext() {
+      try {
+        timeLog.start("Iterator.hasNext()");
+        return wrapped.hasNext();
+      } finally {
+        timeLog.end("Iterator.hasNext()");
+      }
+    }
+
+    @Override
+    public T next() {
+      try {
+        timeLog.start("Iterator.next()");
+        return wrapped.next();
+      } finally {
+        timeLog.end("Iterator.next()");
+      }
+    }
+
+    @Override
+    public void remove() {
+      try {
+        timeLog.start("Iterator.remove()");
+        wrapped.remove();
+      } finally {
+        timeLog.end("Iterator.remove()");
+      }
+    }
+  }
+
 }

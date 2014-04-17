@@ -79,6 +79,7 @@ import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.Daemon;
@@ -152,7 +153,8 @@ public class DFSOutputStream extends FSOutputSummer
   private final short blockReplication; // replication factor of file
   private boolean shouldSyncBlock = false; // force blocks to disk upon close
   private CachingStrategy cachingStrategy;
-  
+  private TimeLog timeLog = new TimeLog(DFSOutputStream.class);
+
   private class Packet {
     long    seqno;               // sequencenumber of buffer in block
     long    offsetInBlock;       // offset in block
@@ -1470,23 +1472,34 @@ public class DFSOutputStream extends FSOutputSummer
   private void waitAndQueueCurrentPacket() throws IOException {
     synchronized (dataQueue) {
       // If queue is full, then wait till we have enough space
-      while (!closed && dataQueue.size() + ackQueue.size()  > MAX_PACKETS) {
-        try {
-          dataQueue.wait();
-        } catch (InterruptedException e) {
-          // If we get interrupted while waiting to queue data, we still need to get rid
-          // of the current packet. This is because we have an invariant that if
-          // currentPacket gets full, it will get queued before the next writeChunk.
-          //
-          // Rather than wait around for space in the queue, we should instead try to
-          // return to the caller as soon as possible, even though we slightly overrun
-          // the MAX_PACKETS iength.
-          Thread.currentThread().interrupt();
-          break;
+      timeLog.start("waitAndQueueCurrentPacket()", TimeLog.Resource.NETWORK);
+      try {
+        while (!closed && dataQueue.size() + ackQueue.size()  > MAX_PACKETS) {
+          try {
+            dataQueue.wait();
+          } catch (InterruptedException e) {
+            // If we get interrupted while waiting to queue data, we still need to get rid
+            // of the current packet. This is because we have an invariant that if
+            // currentPacket gets full, it will get queued before the next writeChunk.
+            //
+            // Rather than wait around for space in the queue, we should instead try to
+            // return to the caller as soon as possible, even though we slightly overrun
+            // the MAX_PACKETS iength.
+            Thread.currentThread().interrupt();
+            break;
+          }
         }
+      } finally {
+        timeLog.end("waitAndQueueCurrentPacket()", TimeLog.Resource.NETWORK);
       }
       checkClosed();
-      queueCurrentPacket();
+
+      timeLog.start("queueCurrentPacket()", TimeLog.Resource.NETWORK);
+      try {
+        queueCurrentPacket();
+      } finally {
+        timeLog.end("queueCurrentPacket()", TimeLog.Resource.NETWORK);
+      }
     }
   }
 
@@ -1494,6 +1507,17 @@ public class DFSOutputStream extends FSOutputSummer
   @Override
   protected synchronized void writeChunk(byte[] b, int offset, int len, byte[] checksum) 
                                                         throws IOException {
+    timeLog.start("writeChunk(byte[] b, int offset, int len, byte[] checksum)");
+    try {
+      writeChunk2(b, offset, len, checksum);
+    } finally {
+      timeLog.end("writeChunk(byte[] b, int offset, int len, byte[] checksum)");
+    }
+
+  }
+  protected synchronized void writeChunk2(byte[] b, int offset, int len, byte[] checksum)
+      throws IOException {
+
     dfsClient.checkOpen();
     checkClosed();
 

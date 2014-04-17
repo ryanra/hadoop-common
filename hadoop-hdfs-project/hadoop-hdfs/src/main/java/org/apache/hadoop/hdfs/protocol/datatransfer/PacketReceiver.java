@@ -109,7 +109,7 @@ public class PacketReceiver implements Closeable {
     doRead(null, in);
   }
 
-  private void doRead(ReadableByteChannel ch, InputStream in)
+  private void doRead(ReadableByteChannel ch, InputStream in) // read a "packet" (i don't think this maps to a network packet): header + var length payload)
       throws IOException {
     // Each packet looks like:
     //   PLEN    HLEN      HEADER     CHECKSUMS  DATA

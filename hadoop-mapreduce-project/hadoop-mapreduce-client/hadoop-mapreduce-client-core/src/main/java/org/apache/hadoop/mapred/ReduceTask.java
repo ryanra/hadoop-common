@@ -52,6 +52,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskCounter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormatCounter;
 import org.apache.hadoop.mapreduce.task.reduce.Shuffle;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.util.Progress;
 import org.apache.hadoop.util.Progressable;
 import org.apache.hadoop.util.ReflectionUtils;
@@ -79,6 +80,8 @@ public class ReduceTask extends Task {
     getProgress().setStatus("reduce"); 
     setPhase(TaskStatus.Phase.SHUFFLE);        // phase to start with 
   }
+
+  private static final TimeLog timeLog = new TimeLog(ReduceTask.class);
 
   private Progress copyPhase;
   private Progress sortPhase;
@@ -312,7 +315,7 @@ public class ReduceTask extends Task {
   public void run(JobConf job, final TaskUmbilicalProtocol umbilical)
     throws IOException, InterruptedException, ClassNotFoundException {
     job.setBoolean(JobContext.SKIP_RECORDS, isSkipping());
-
+    timeLog.start("run(JobConf job, final TaskUmbilicalProtocol umbilical)");
     if (isMapOrReduce()) {
       copyPhase = getProgress().addPhase("copy");
       sortPhase  = getProgress().addPhase("sort");
@@ -352,6 +355,7 @@ public class ReduceTask extends Task {
     if ((framework == null && masterAddr.equals("local"))
         || (framework != null && framework.equals(MRConfig.LOCAL_FRAMEWORK_NAME))) {
       isLocal = true;
+      timeLog.info("isLocal=true !");
     }
     
     if (!isLocal) {
@@ -377,9 +381,15 @@ public class ReduceTask extends Task {
                     taskStatus, copyPhase, sortPhase, this,
                     mapOutputFile);
       shuffleConsumerPlugin.init(shuffleContext);
-      rIter = shuffleConsumerPlugin.run();
+      try {
+        timeLog.start("shuffleConsumerPlugin.run()");
+        rIter = shuffleConsumerPlugin.run();
+      } finally {
+        timeLog.end("shuffleConsumerPlugin.run()");
+      }
     } else {
       // local job runner doesn't have a copy phase
+      timeLog.info("isLocal == true!");
       copyPhase.complete();
       final FileSystem rfs = FileSystem.getLocal(job).getRaw();
       rIter = Merger.merge(job, rfs, job.getMapOutputKeyClass(),
@@ -402,17 +412,30 @@ public class ReduceTask extends Task {
     RawComparator comparator = job.getOutputValueGroupingComparator();
 
     if (useNewApi) {
-      runNewReducer(job, umbilical, reporter, rIter, comparator, 
-                    keyClass, valueClass);
+      try {
+        timeLog.start("runNewReducer()");
+        runNewReducer(job, umbilical, reporter, rIter, comparator,
+            keyClass, valueClass);
+      } finally {
+        timeLog.end("runNewReducer()");
+      }
     } else {
-      runOldReducer(job, umbilical, reporter, rIter, comparator, 
-                    keyClass, valueClass);
+      timeLog.start("runOldReducer()");
+      try {
+        runOldReducer(job, umbilical, reporter, rIter, comparator,
+            keyClass, valueClass);
+      } finally {
+        timeLog.end("runOldReducer()");
+      }
     }
 
     if (shuffleConsumerPlugin != null) {
       shuffleConsumerPlugin.close();
     }
+    timeLog.end("run(JobConf job, final TaskUmbilicalProtocol umbilical)");
+    timeLog.logTimingData();
     done(umbilical, reporter);
+    //TODO(ryan) somehow log the done() part
   }
 
   @SuppressWarnings("unchecked")
@@ -437,7 +460,12 @@ public class ReduceTask extends Task {
       new OutputCollector<OUTKEY,OUTVALUE>() {
         public void collect(OUTKEY key, OUTVALUE value)
           throws IOException {
-          finalOut.write(key, value);
+          timeLog.start("finalOut.write(key, value)", TimeLog.Resource.DISK);
+          try{
+            finalOut.write(key, value);
+          } finally {
+            timeLog.end("finalOut.write(key, value)", TimeLog.Resource.DISK);
+          }
           // indicate that progress update needs to be sent
           reporter.progress();
         }
@@ -457,25 +485,62 @@ public class ReduceTask extends Task {
           job.getOutputValueGroupingComparator(), keyClass, valueClass, 
           job, reporter);
       values.informReduceProgress();
-      while (values.more()) {
+
+      INKEY key = null;
+      while (loggingMore(values)) {
         reduceInputKeyCounter.increment(1);
-        reducer.reduce(values.getKey(), values, collector, reporter);
+
+        timeLog.start("values.getKey()");
+        try {
+          key = values.getKey();
+        } finally {
+          timeLog.end("values.getKey()");
+        }
+
+        reducer.reduce(key, values, collector, reporter);
         if(incrProcCount) {
           reporter.incrCounter(SkipBadRecords.COUNTER_GROUP, 
               SkipBadRecords.COUNTER_REDUCE_PROCESSED_GROUPS, 1);
         }
-        values.nextKey();
+
+        timeLog.start("values.nextKey()");
+        try {
+          values.nextKey();
+        } finally {
+          timeLog.end("values.nextKey()");
+        }
+
         values.informReduceProgress();
       }
 
-      reducer.close();
+      timeLog.start("reducer.close()");
+      try {
+        reducer.close();
+      } finally {
+        timeLog.end("reducer.close()");
+      }
       reducer = null;
       
-      out.close(reporter);
+      timeLog.start("out.close(reporter)");
+      try {
+        out.close(reporter);
+      } finally {
+        timeLog.end("out.close(reporter)");
+      }
       out = null;
     } finally {
       IOUtils.cleanup(LOG, reducer);
       closeQuietly(out, reporter);
+    }
+
+  }
+
+  private <INKEY,INVALUE> boolean loggingMore(ReduceValuesIterator<INKEY,INVALUE> values) {
+    timeLog.start("values.more()");
+    try {
+      return values.more();
+    } finally {
+      timeLog.end("values.more()");
     }
   }
 
@@ -501,6 +566,7 @@ public class ReduceTask extends Task {
       long bytesOutPrev = getOutputBytes(fsStats);
       this.real = job.getOutputFormat().getRecordWriter(fs, job, finalName,
           reporter);
+      LOG.info("ryanlog: reduce output format class: " +  real.getClass());
       long bytesOutCurr = getOutputBytes(fsStats);
       fileOutputByteCounter.increment(bytesOutCurr - bytesOutPrev);
     }
@@ -631,6 +697,8 @@ public class ReduceTask extends Task {
         ReflectionUtils.newInstance(taskContext.getReducerClass(), job);
     org.apache.hadoop.mapreduce.RecordWriter<OUTKEY,OUTVALUE> trackedRW = 
       new NewTrackingRecordWriter<OUTKEY, OUTVALUE>(this, taskContext);
+    trackedRW = new org.apache.hadoop.mapreduce.RecordWriter.RecordWriterWrapper(trackedRW);
+
     job.setBoolean("mapred.skip.on", isSkipping());
     job.setBoolean(JobContext.SKIP_RECORDS, isSkipping());
     org.apache.hadoop.mapreduce.Reducer.Context 
@@ -642,8 +710,10 @@ public class ReduceTask extends Task {
                                                reporter, comparator, keyClass,
                                                valueClass);
     try {
+      timeLog.start("reducer.run(reducerContext)");
       reducer.run(reducerContext);
     } finally {
+      timeLog.end("reducer.run(reducerContext)");
       trackedRW.close(reducerContext);
     }
   }

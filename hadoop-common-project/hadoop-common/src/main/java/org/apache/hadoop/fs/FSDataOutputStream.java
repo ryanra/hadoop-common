@@ -25,6 +25,7 @@ import java.io.OutputStream;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.ryan.TimeLog;
 
 /** Utility that wraps a {@link OutputStream} in a {@link DataOutputStream},
  * buffers output through a {@link BufferedOutputStream} and creates a checksum
@@ -38,17 +39,24 @@ public class FSDataOutputStream extends DataOutputStream
   private static class PositionCache extends FilterOutputStream {
     private FileSystem.Statistics statistics;
     long position;
+    private final TimeLog timeLog = new TimeLog(PositionCache.class);
 
     public PositionCache(OutputStream out, 
                          FileSystem.Statistics stats,
                          long pos) throws IOException {
       super(out);
+      timeLog.info("OutputStream class: " + out.getClass());
       statistics = stats;
       position = pos;
     }
 
     public void write(int b) throws IOException {
-      out.write(b);
+      timeLog.start("write(int b)", TimeLog.Resource.GENERAL_IO);
+      try {
+        out.write(b);
+      } finally {
+        timeLog.end("write(int b)", TimeLog.Resource.GENERAL_IO);
+      }
       position++;
       if (statistics != null) {
         statistics.incrementBytesWritten(1);
@@ -56,7 +64,12 @@ public class FSDataOutputStream extends DataOutputStream
     }
     
     public void write(byte b[], int off, int len) throws IOException {
-      out.write(b, off, len);
+      timeLog.start("write(byte b[], int off, int len)", TimeLog.Resource.GENERAL_IO);
+      try {
+        out.write(b, off, len);
+      } finally {
+        timeLog.end("write(byte b[], int off, int len)", TimeLog.Resource.GENERAL_IO);
+      }
       position += len;                            // update position
       if (statistics != null) {
         statistics.incrementBytesWritten(len);

@@ -26,6 +26,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.mapreduce.task.MapContextImpl;
+import org.apache.hadoop.ryan.TimeLog;
 
 /** 
  * Maps input key/value pairs to a set of intermediate key/value pairs.  
@@ -99,6 +100,8 @@ import org.apache.hadoop.mapreduce.task.MapContextImpl;
 @InterfaceStability.Stable
 public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
 
+  private TimeLog timerLog = new TimeLog(Mapper.class);
+
   /**
    * The <code>Context</code> passed on to the {@link Mapper} implementations.
    */
@@ -141,11 +144,46 @@ public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
   public void run(Context context) throws IOException, InterruptedException {
     setup(context);
     try {
-      while (context.nextKeyValue()) {
-        map(context.getCurrentKey(), context.getCurrentValue(), context);
+      boolean hasNext = loggingHasNext(context);
+      while (hasNext) {
+        try {
+          timerLog.start("map(context.getCurrentKey(), context.getCurrentValue(), context)");
+          map(loggingCurrentKey(context), loggingCurrentValue(context), context);
+        } finally {
+          timerLog.end("map(context.getCurrentKey(), context.getCurrentValue(), context)");
+        }
+        hasNext = loggingHasNext(context);
       }
     } finally {
       cleanup(context);
     }
   }
+
+  private KEYIN loggingCurrentKey(Context context) throws IOException, InterruptedException {
+    try {
+      timerLog.start("context.getCurrentKey()");
+      return context.getCurrentKey();
+    } finally {
+      timerLog.end("context.getCurrentKey()");
+    }
+  }
+
+  private VALUEIN loggingCurrentValue(Context context) throws IOException, InterruptedException {
+    try {
+      timerLog.start("context.getCurrentValue()");
+      return context.getCurrentValue();
+    } finally {
+      timerLog.end("context.getCurrentValue()");
+    }
+  }
+
+  private boolean loggingHasNext(Context context) throws IOException, InterruptedException {
+    try {
+      timerLog.start("context.nextKeyValue()");
+      return context.nextKeyValue();
+    } finally {
+      timerLog.end("context.nextKeyValue()");
+    }
+  }
+
 }

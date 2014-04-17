@@ -45,6 +45,7 @@ import org.apache.hadoop.io.serializer.Serializer;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.ryan.TimeLog;
 
 /**
  * <code>IFile</code> is the simple <key-len, value-len, key, value> format
@@ -57,6 +58,8 @@ import org.apache.commons.logging.LogFactory;
 @InterfaceStability.Unstable
 public class IFile {
   private static final Log LOG = LogFactory.getLog(IFile.class);
+  private static final TimeLog TIMER = new TimeLog(IFile.class);
+
   public static final int EOF_MARKER = -1; // End of File Marker
   
   /**
@@ -218,8 +221,12 @@ public class IFile {
       // Write the record out
       WritableUtils.writeVInt(out, keyLength);                  // key length
       WritableUtils.writeVInt(out, valueLength);                // value length
-      out.write(buffer.getData(), 0, buffer.getLength());       // data
-
+      try {
+        TIMER.start("out.write()");
+        out.write(buffer.getData(), 0, buffer.getLength());       // data
+      } finally {
+        TIMER.end("out.write()");
+      }
       // Reset
       buffer.reset();
       
