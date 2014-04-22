@@ -156,7 +156,7 @@ public class RawLocalFileSystem extends FileSystem {
     
     @Override
     public int read() throws IOException {
-      timeLog.start("read()");
+      timeLog.start("read()", TimeLog.Resource.DISK);
       try {
         int value = fis.read();
         if (value >= 0) {
@@ -166,13 +166,13 @@ public class RawLocalFileSystem extends FileSystem {
       } catch (IOException e) {                 // unexpected exception
         throw new FSError(e);                   // assume native fs error
       } finally {
-        timeLog.end("read()");
+        timeLog.end("read()", TimeLog.Resource.DISK);
       }
     }
     
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
-      timeLog.start("read(byte[] b, int off, int len)");
+      timeLog.start("read(byte[] b, int off, int len)", TimeLog.Resource.DISK);
       try {
         int value = fis.read(b, off, len);
         if (value > 0) {
@@ -182,7 +182,7 @@ public class RawLocalFileSystem extends FileSystem {
       } catch (IOException e) {                 // unexpected exception
         throw new FSError(e);                   // assume native fs error
       } finally {
-        timeLog.end("read(byte[] b, int off, int len)");
+        timeLog.end("read(byte[] b, int off, int len)", TimeLog.Resource.DISK);
       }
     }
     
@@ -190,13 +190,13 @@ public class RawLocalFileSystem extends FileSystem {
     public int read(long position, byte[] b, int off, int len)
       throws IOException {
       ByteBuffer bb = ByteBuffer.wrap(b, off, len);
-      timeLog.start("read(long position, byte[] b, int off, int len)");
+      timeLog.start("read(long position, byte[] b, int off, int len)", TimeLog.Resource.DISK);
       try {
         return fis.getChannel().read(bb, position);
       } catch (IOException e) {
         throw new FSError(e);
       } finally {
-        timeLog.end("read(long position, byte[] b, int off, int len)");
+        timeLog.end("read(long position, byte[] b, int off, int len)", TimeLog.Resource.DISK);
       }
     }
     
@@ -244,25 +244,25 @@ public class RawLocalFileSystem extends FileSystem {
     public void flush() throws IOException { fos.flush(); }
     @Override
     public void write(byte[] b, int off, int len) throws IOException { //TODO(ryan) log this -> reduce output for merge
-      timeLog.start("write(byte[] b, int off, int len)");
+      timeLog.start("write(byte[] b, int off, int len)", TimeLog.Resource.DISK);
       try {
         fos.write(b, off, len);
       } catch (IOException e) {                // unexpected exception
         throw new FSError(e);                  // assume native fs error
       } finally {
-        timeLog.end("write(byte[] b, int off, int len)");
+        timeLog.end("write(byte[] b, int off, int len)", TimeLog.Resource.DISK);
       }
     }
     
     @Override
     public void write(int b) throws IOException {
-      timeLog.start("write(int b)");
+      timeLog.start("write(int b)", TimeLog.Resource.DISK);
       try {
         fos.write(b);
       } catch (IOException e) {              // unexpected exception
         throw new FSError(e);                // assume native fs error
       } finally {
-        timeLog.end("write(int b)");
+        timeLog.end("write(int b)", TimeLog.Resource.DISK);
       }
     }
   }

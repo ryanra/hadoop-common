@@ -382,10 +382,10 @@ public class ReduceTask extends Task {
                     mapOutputFile);
       shuffleConsumerPlugin.init(shuffleContext);
       try {
-        timeLog.start("shuffleConsumerPlugin.run()");
+        timeLog.start("shuffleConsumerPlugin.run()", TimeLog.Resource.GENERAL_IO);
         rIter = shuffleConsumerPlugin.run();
       } finally {
-        timeLog.end("shuffleConsumerPlugin.run()");
+        timeLog.end("shuffleConsumerPlugin.run()", TimeLog.Resource.GENERAL_IO);
       }
     } else {
       // local job runner doesn't have a copy phase

@@ -24,6 +24,7 @@ import java.io.FilterOutputStream;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.util.DataChecksum;
 /**
  * A Checksum output stream.
@@ -41,6 +42,7 @@ public class IFileOutputStream extends FilterOutputStream {
   private byte[] barray;
   private boolean closed = false;
   private boolean finished = false;
+  private final TimeLog timeLog = new TimeLog(IFileOutputStream.class);
 
   /**
    * Create a checksum output stream that writes
@@ -49,6 +51,7 @@ public class IFileOutputStream extends FilterOutputStream {
    */
   public IFileOutputStream(OutputStream out) {
     super(out);
+    timeLog.info("IFile OutputStream class: " + out.getClass());
     sum = DataChecksum.newDataChecksum(DataChecksum.Type.CRC32,
         Integer.MAX_VALUE);
     barray = new byte[sum.getChecksumSize()];

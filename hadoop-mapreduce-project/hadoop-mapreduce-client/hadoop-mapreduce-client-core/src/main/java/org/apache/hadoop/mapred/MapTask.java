@@ -429,7 +429,7 @@ public class MapTask extends Task {
     RecordReader<INKEY,INVALUE> in = isSkipping() ? 
         new SkippingRecordReader<INKEY,INVALUE>(umbilical, reporter, job) :
           new TrackedRecordReader<INKEY,INVALUE>(reporter, job);
-    in = new RecordReader.RecordReaderWrapper<INKEY, INVALUE>(in);
+    //in = new RecordReader.RecordReaderWrapper<INKEY, INVALUE>(in);
     job.setBoolean(JobContext.SKIP_RECORDS, isSkipping());
 
 
@@ -438,14 +438,15 @@ public class MapTask extends Task {
     MapOutputCollector<OUTKEY, OUTVALUE> collector = null;
     if (numReduceTasks > 0) {
       collector = createSortingCollector(job, reporter);
-      collector = new MapOutputCollector.MapOutputCollectorWrapper<OUTKEY, OUTVALUE>(collector);
+      //collector = new MapOutputCollector.MapOutputCollectorWrapper<OUTKEY, OUTVALUE>(collector);
     } else { 
       collector = new DirectMapOutputCollector<OUTKEY, OUTVALUE>();
        MapOutputCollector.Context context =
                            new MapOutputCollector.Context(this, job, reporter);
-      collector = new MapOutputCollector.MapOutputCollectorWrapper<OUTKEY, OUTVALUE>(collector);
+      //collector = new MapOutputCollector.MapOutputCollectorWrapper<OUTKEY, OUTVALUE>(collector);
       collector.init(context);
     }
+    timeLog.info("collector class: " + collector.getClass());
     MapRunnable<INKEY,INVALUE,OUTKEY,OUTVALUE> runner =
       ReflectionUtils.newInstance(job.getMapRunnerClass(), job);
 
@@ -462,12 +463,23 @@ public class MapTask extends Task {
         setPhase(TaskStatus.Phase.SORT);
       }
       statusUpdate(umbilical);
-      collector.flush();
+      timeLog.start("collector.flush()", TimeLog.Resource.DISK);
+      try {
+        collector.flush();
+      } finally {
+        timeLog.end("collector.flush()", TimeLog.Resource.DISK);
+      }
       
       in.close();
       in = null;
-      
-      collector.close();
+
+      timeLog.start("collector.close()", TimeLog.Resource.DISK);
+      try {
+        collector.close();
+      } finally {
+        timeLog.end("collector.close()", TimeLog.Resource.DISK);
+      }
+
       collector = null;
     } finally {
       closeQuietly(in);
@@ -788,7 +800,7 @@ public class MapTask extends Task {
     } else {
       output = new NewOutputCollector(taskContext, job, umbilical, reporter);
     }
-    output = new org.apache.hadoop.mapreduce.RecordWriter.RecordWriterWrapper(output);
+    //output = new org.apache.hadoop.mapreduce.RecordWriter.RecordWriterWrapper(output);
 
     org.apache.hadoop.mapreduce.MapContext<INKEY, INVALUE, OUTKEY, OUTVALUE> 
     mapContext = 
@@ -806,10 +818,10 @@ public class MapTask extends Task {
       input.initialize(split, mapperContext);
       timeLog.info("mapperContext class: " + mapperContext.getClass());
       try {
-        timeLog.start("mapper.run(mapperContext)");
+        timeLog.start("mapper.run(mapperContext)", TimeLog.Resource.CPU);
         mapper.run(mapperContext);
       } finally {
-        timeLog.end("mapper.run(mapperContext)");
+        timeLog.end("mapper.run(mapperContext)", TimeLog.Resource.CPU);
       }
       mapPhase.complete();
       setPhase(TaskStatus.Phase.SORT);
@@ -1097,11 +1109,11 @@ public class MapTask extends Task {
 
     public void collect(K key, V value, final int partition
     ) throws IOException {
-      timeLog.start("collect(K key, V value, final int partition)", TimeLog.Resource.CPU);
+      //timeLog.start("collect(K key, V value, final int partition)", TimeLog.Resource.CPU);
       try {
         collect2(key, value, partition);
       } finally {
-        timeLog.end("collect(K key, V value, final int partition)", TimeLog.Resource.CPU);
+        //timeLog.end("collect(K key, V value, final int partition)", TimeLog.Resource.CPU);
       }
     }
 
@@ -1192,7 +1204,7 @@ public class MapTask extends Task {
       }
 
       try {
-        timeLog.start("serializeToBuffer()", TimeLog.Resource.CPU);
+        //timeLog.start("serializeToBuffer()", TimeLog.Resource.CPU);
         // serialize key bytes into buffer
         int keystart = bufindex;
         keySerializer.serialize(key);
@@ -1238,7 +1250,7 @@ public class MapTask extends Task {
         mapOutputRecordCounter.increment(1);
         return;
       } finally {
-        timeLog.end("serializeToBuffer()", TimeLog.Resource.CPU);
+        //timeLog.end("serializeToBuffer()", TimeLog.Resource.CPU);
       }
     }
 
@@ -1670,10 +1682,10 @@ public class MapTask extends Task {
           ? kvstart
           : kvmeta.capacity() + kvstart) / NMETA;
         try {
-          timeLog.start("sorter.sort()");
+          timeLog.start("sorter.sort()", TimeLog.Resource.CPU);
           sorter.sort(MapOutputBuffer.this, mstart, mend, reporter);
         } finally {
-          timeLog.end("sorter.sort()");
+          timeLog.end("sorter.sort()", TimeLog.Resource.CPU);
         }
         int spindex = mstart;
         final IndexRecord rec = new IndexRecord();

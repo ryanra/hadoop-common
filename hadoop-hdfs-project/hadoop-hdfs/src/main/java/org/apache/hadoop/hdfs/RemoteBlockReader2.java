@@ -157,10 +157,10 @@ public class RemoteBlockReader2  implements BlockReader {
   public int read(ByteBuffer buf) throws IOException {
     if (curDataSlice == null || curDataSlice.remaining() == 0 && bytesNeededToFinish > 0) {
       try {
-        timeLog.start("readNextPacket()");
+        timeLog.start("readNextPacket()", TimeLog.Resource.GENERAL_IO);
         readNextPacket();
       } finally {
-        timeLog.end("readNextPacket()");
+        timeLog.end("readNextPacket()", TimeLog.Resource.GENERAL_IO);
       }
     }
     if (curDataSlice.remaining() == 0) {

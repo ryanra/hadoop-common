@@ -26,6 +26,7 @@ public class TimeLog extends BaseLog {
   private static class TimerTree<T> {
 
     private final Stack<TimerNode<T>> nodes;
+    private long invokedCount = 0;
 
     public TimerTree() {
       this.nodes = new Stack<TimerNode<T>>();
@@ -33,6 +34,7 @@ public class TimeLog extends BaseLog {
     }
 
     public void enterFunction(T data, long minTime) {
+      invokedCount++;
       nodes.push(new TimerNode(data, minTime));
     }
 
@@ -49,8 +51,9 @@ public class TimeLog extends BaseLog {
       TimerNode node = nodes.pop();
       node.stop();
       Map mapified = node.mapify();
-      Map<String, Map> topLevel = new HashMap<String, Map>();
+      Map<String, Object> topLevel = new HashMap<String, Object>();
       topLevel.put("timerRoot", mapified);
+      topLevel.put("invokedCount", invokedCount);
       return topLevel;
     }
   }
@@ -169,7 +172,7 @@ public class TimeLog extends BaseLog {
   }
 
   public void start(String name) {
-    timers.get().enterFunction(name(name), DEFAULT_MIN_NANOS);
+    start(name, DEFAULT_MIN_NANOS);
   }
 
   public void start(String name, long minTime) {

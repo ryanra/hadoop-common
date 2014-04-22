@@ -24,6 +24,7 @@ import java.util.zip.Checksum;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.ryan.TimeLog;
 
 /**
  * This is a generic output stream for generating checksums for
@@ -40,7 +41,8 @@ abstract public class FSOutputSummer extends OutputStream {
   private byte checksum[];
   // The number of valid bytes in the buffer.
   private int count;
-  
+  private final TimeLog timeLog = new TimeLog(FSOutputSummer.class);
+
   protected FSOutputSummer(Checksum sum, int maxChunkSize, int checksumSize) {
     this.sum = sum;
     this.buf = new byte[maxChunkSize];
@@ -167,12 +169,17 @@ abstract public class FSOutputSummer extends OutputStream {
    */
   private void writeChecksumChunk(byte b[], int off, int len, boolean keep)
   throws IOException {
-    int tempChecksum = (int)sum.getValue();
-    if (!keep) {
-      sum.reset();
+    timeLog.start("writeChecksumChunk(byte b[], int off, int len, boolean keep)");
+    try {
+      int tempChecksum = (int)sum.getValue();
+      if (!keep) {
+        sum.reset();
+      }
+      int2byte(tempChecksum, checksum);
+      writeChunk(b, off, len, checksum);
+    } finally {
+      timeLog.end("writeChecksumChunk(byte b[], int off, int len, boolean keep)");
     }
-    int2byte(tempChecksum, checksum);
-    writeChunk(b, off, len, checksum);
   }
 
   /**

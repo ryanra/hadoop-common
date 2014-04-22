@@ -26,6 +26,7 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.util.Progressable;
 import org.apache.hadoop.util.PureJavaCrc32;
 
@@ -370,7 +371,8 @@ public abstract class ChecksumFileSystem extends FilterFileSystem {
     private FSDataOutputStream sums;
     private static final float CHKSUM_AS_FRACTION = 0.01f;
     private boolean isClosed = false;
-    
+    private TimeLog timeLog = new TimeLog(ChecksumFSOutputSummer.class);
+
     public ChecksumFSOutputSummer(ChecksumFileSystem fs, 
                           Path file, 
                           boolean overwrite,
@@ -405,8 +407,13 @@ public abstract class ChecksumFileSystem extends FilterFileSystem {
     @Override
     protected void writeChunk(byte[] b, int offset, int len, byte[] checksum)
     throws IOException {
-      datas.write(b, offset, len);
-      sums.write(checksum);
+      timeLog.start("writeChunk(byte[] b, int offset, int len, byte[] checksum)");
+      try {
+        datas.write(b, offset, len);
+        sums.write(checksum);
+      } finally {
+        timeLog.end("writeChunk(byte[] b, int offset, int len, byte[] checksum)");
+      }
     }
 
     @Override
