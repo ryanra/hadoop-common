@@ -305,7 +305,7 @@ public class MapTask extends Task {
   public void run(final JobConf job, final TaskUmbilicalProtocol umbilical)
     throws IOException, ClassNotFoundException, InterruptedException {
     this.umbilical = umbilical;
-
+    timeLog.enableLogging();
     LOG.warn("ryanlog: start of mapTask.run()");
 
     if (isMapTask()) {

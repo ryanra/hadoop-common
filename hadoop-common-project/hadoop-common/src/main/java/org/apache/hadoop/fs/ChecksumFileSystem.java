@@ -407,12 +407,12 @@ public abstract class ChecksumFileSystem extends FilterFileSystem {
     @Override
     protected void writeChunk(byte[] b, int offset, int len, byte[] checksum)
     throws IOException {
-      timeLog.start("writeChunk(byte[] b, int offset, int len, byte[] checksum)");
+      //timeLog.start("writeChunk(byte[] b, int offset, int len, byte[] checksum)");
       try {
         datas.write(b, offset, len);
         sums.write(checksum);
       } finally {
-        timeLog.end("writeChunk(byte[] b, int offset, int len, byte[] checksum)");
+        //timeLog.end("writeChunk(byte[] b, int offset, int len, byte[] checksum)");
       }
     }
 

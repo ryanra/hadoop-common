@@ -315,6 +315,7 @@ public class ReduceTask extends Task {
   public void run(JobConf job, final TaskUmbilicalProtocol umbilical)
     throws IOException, InterruptedException, ClassNotFoundException {
     job.setBoolean(JobContext.SKIP_RECORDS, isSkipping());
+    timeLog.enableLogging();
     timeLog.start("run(JobConf job, final TaskUmbilicalProtocol umbilical)");
     if (isMapOrReduce()) {
       copyPhase = getProgress().addPhase("copy");

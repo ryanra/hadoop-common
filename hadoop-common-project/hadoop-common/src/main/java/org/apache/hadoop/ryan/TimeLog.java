@@ -12,6 +12,7 @@ public class TimeLog extends BaseLog {
 
   public static long DEFAULT_MIN_NANOS = 50*1000*1000; // 50 ms
   private static final NestedTimers timers = new NestedTimers();
+  private static final ThreadLocal<Boolean> timingEnabled = new ThreadLocal<Boolean>();
 
   private static class NestedTimers extends ThreadLocal<TimerTree<String>> {
 
@@ -176,16 +177,29 @@ public class TimeLog extends BaseLog {
   }
 
   public void start(String name, long minTime) {
-    timers.get().enterFunction(name(name), minTime);
+    if (isTimingEnabled()) {
+      timers.get().enterFunction(name(name), minTime);
+    }
   }
 
   public void end(String name) {
-    timers.get().exitFunction(name(name));
+    if (isTimingEnabled()) {
+      timers.get().exitFunction(name(name));
+    }
     //info(name);
   }
 
   private String name(String name) {
     return this.className + "." + name;
+  }
+
+  private boolean isTimingEnabled() {
+    Boolean value = timingEnabled.get();
+    return value != null && value == true; // rule out null
+  }
+
+  public void enableLogging() {
+    timingEnabled.set(true);
   }
 
   public void logTimingData() {

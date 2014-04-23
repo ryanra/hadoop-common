@@ -169,7 +169,7 @@ abstract public class FSOutputSummer extends OutputStream {
    */
   private void writeChecksumChunk(byte b[], int off, int len, boolean keep)
   throws IOException {
-    timeLog.start("writeChecksumChunk(byte b[], int off, int len, boolean keep)");
+    //timeLog.start("writeChecksumChunk(byte b[], int off, int len, boolean keep)");
     try {
       int tempChecksum = (int)sum.getValue();
       if (!keep) {
@@ -178,7 +178,7 @@ abstract public class FSOutputSummer extends OutputStream {
       int2byte(tempChecksum, checksum);
       writeChunk(b, off, len, checksum);
     } finally {
-      timeLog.end("writeChecksumChunk(byte b[], int off, int len, boolean keep)");
+      //timeLog.end("writeChecksumChunk(byte b[], int off, int len, boolean keep)");
     }
   }
 
