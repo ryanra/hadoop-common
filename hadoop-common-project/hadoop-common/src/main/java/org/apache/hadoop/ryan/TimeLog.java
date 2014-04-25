@@ -3,6 +3,8 @@ package org.apache.hadoop.ryan;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.IOException;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.util.*;
 
 /**
@@ -10,7 +12,8 @@ import java.util.*;
  */
 public class TimeLog extends BaseLog {
 
-  public static long DEFAULT_MIN_NANOS = 50*1000*1000; // 50 ms
+  private static int NANOS_PER_MILLI = 1000 * 1000;
+  public static long DEFAULT_MIN_NANOS = 50*NANOS_PER_MILLI; // 50 ms
   private static final NestedTimers timers = new NestedTimers();
   private static final ThreadLocal<Boolean> timingEnabled = new ThreadLocal<Boolean>();
 
@@ -28,10 +31,19 @@ public class TimeLog extends BaseLog {
 
     private final Stack<TimerNode<T>> nodes;
     private long invokedCount = 0;
+    private final long gcStart = getGCTime();
 
     public TimerTree() {
       this.nodes = new Stack<TimerNode<T>>();
       enterFunction(null, 0);
+    }
+
+    private static long getGCTime() {
+      long sum = 0;
+      for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
+        sum += bean.getCollectionTime();
+      }
+      return sum * NANOS_PER_MILLI;
     }
 
     public void enterFunction(T data, long minTime) {
@@ -55,6 +67,7 @@ public class TimeLog extends BaseLog {
       Map<String, Object> topLevel = new HashMap<String, Object>();
       topLevel.put("timerRoot", mapified);
       topLevel.put("invokedCount", invokedCount);
+      topLevel.put("gcTime", getGCTime() - gcStart);
       return topLevel;
     }
   }
