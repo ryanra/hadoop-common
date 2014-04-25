@@ -208,7 +208,7 @@ public class TimeLog extends BaseLog {
   }
 
   public enum Resource {
-    DISK, NETWORK, GENERAL_IO, CPU
+    DISK, NETWORK, GENERAL_IO, CPU, SHUFFLE, SPILL // TODO: get rid of general io
   }
 
 }

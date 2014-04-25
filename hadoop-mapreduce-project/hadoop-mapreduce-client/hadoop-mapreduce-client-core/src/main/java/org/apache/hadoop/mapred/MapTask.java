@@ -1532,14 +1532,14 @@ public class MapTask extends Task {
       LOG.info("Starting flush of map output");
       spillLock.lock();
       try {
-        timeLog.start("spillInProgress");
+        timeLog.start("spillInProgress", TimeLog.Resource.DISK);
         try {
           while (spillInProgress) {
             reporter.progress();
             spillDone.await();
           }
         } finally {
-          timeLog.end("spillInProgress");
+          timeLog.end("spillInProgress", TimeLog.Resource.DISK);
         }
         checkSpillException();
 
