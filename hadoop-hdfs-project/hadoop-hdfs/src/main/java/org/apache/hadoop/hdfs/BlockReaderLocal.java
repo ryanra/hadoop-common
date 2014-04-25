@@ -30,6 +30,7 @@ import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.server.datanode.BlockMetadataHeader;
 import org.apache.hadoop.hdfs.util.DirectBufferPool;
 import org.apache.hadoop.io.IOUtils;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.util.DataChecksum;
 
 /**
@@ -87,7 +88,8 @@ class BlockReaderLocal implements BlockReader {
   private final ExtendedBlock block;
   
   private final FileInputStreamCache fisCache;
-  
+  private TimeLog timeLog = new TimeLog(BlockReaderLocal.class);
+
   private static int getSlowReadBufferNumChunks(int bufSize,
       int bytesPerChecksum) {
     if (bufSize < bytesPerChecksum) {
@@ -176,20 +178,25 @@ class BlockReaderLocal implements BlockReader {
    */
   private int fillBuffer(FileInputStream stream, ByteBuffer buf)
       throws IOException {
-    int bytesRead = stream.getChannel().read(buf);
-    if (bytesRead < 0) {
-      //EOF
-      return bytesRead;
-    }
-    while (buf.remaining() > 0) {
-      int n = stream.getChannel().read(buf);
-      if (n < 0) {
+    timeLog.start("fillBuffer(FileInputStream stream, ByteBuffer buf)", TimeLog.Resource.DISK);
+    try {
+      int bytesRead = stream.getChannel().read(buf);
+      if (bytesRead < 0) {
         //EOF
         return bytesRead;
       }
-      bytesRead += n;
+      while (buf.remaining() > 0) {
+        int n = stream.getChannel().read(buf);
+        if (n < 0) {
+          //EOF
+          return bytesRead;
+        }
+        bytesRead += n;
+      }
+      return bytesRead;
+    } finally {
+      timeLog.end("fillBuffer(FileInputStream stream, ByteBuffer buf)", TimeLog.Resource.DISK);
     }
-    return bytesRead;
   }
   
   /**

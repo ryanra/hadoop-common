@@ -52,6 +52,7 @@ import org.apache.hadoop.util.StringUtils;
 public class RawLocalFileSystem extends FileSystem {
   static final URI NAME = URI.create("file:///");
   private Path workingDir;
+  private final TimeLog timeLog = new TimeLog(RawLocalFileSystem.class);
   
   public RawLocalFileSystem() {
     workingDir = getInitialWorkingDirectory();
@@ -99,20 +100,30 @@ public class RawLocalFileSystem extends FileSystem {
     
     @Override
     public int read(byte[] data) throws IOException {
-      int result = super.read(data);
-      if (result != -1) {
-        statistics.incrementBytesRead(result);
+      timeLog.start("read(byte[] data)", TimeLog.Resource.DISK);
+      try {
+        int result = super.read(data);
+        if (result != -1) {
+          statistics.incrementBytesRead(result);
+        }
+        return result;
+      } finally {
+        timeLog.end("read(byte[] data)", TimeLog.Resource.DISK);
       }
-      return result;
     }
     
     @Override
     public int read(byte[] data, int offset, int length) throws IOException {
-      int result = super.read(data, offset, length);
-      if (result != -1) {
-        statistics.incrementBytesRead(result);
+      timeLog.start("read(byte[] data, int offset, int length)", TimeLog.Resource.DISK);
+      try {
+        int result = super.read(data, offset, length);
+        if (result != -1) {
+          statistics.incrementBytesRead(result);
+        }
+        return result;
+      } finally {
+        timeLog.end("read(byte[] data, int offset, int length)", TimeLog.Resource.DISK);
       }
-      return result;
     }
   }
 

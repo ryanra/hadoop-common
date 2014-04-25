@@ -35,6 +35,7 @@ import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.ReadaheadPool;
 import org.apache.hadoop.io.ReadaheadPool.ReadaheadRequest;
 import org.apache.hadoop.mapreduce.MRConfig;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.util.DataChecksum;
 /**
  * A checksum input stream, used for IFiles.
@@ -53,6 +54,7 @@ public class IFileInputStream extends InputStream {
   private final byte b[] = new byte[1];
   private byte csum[] = null;
   private int checksumSize;
+  private final TimeLog timeLog = new TimeLog(IFileInputStream.class);
 
   private ReadaheadRequest curReadahead = null;
   private ReadaheadPool raPool = ReadaheadPool.getInstance();
@@ -70,6 +72,7 @@ public class IFileInputStream extends InputStream {
    */
   public IFileInputStream(InputStream in, long len, Configuration conf) {
     this.in = in;
+    timeLog.info("IFileInputStream in is " + in);
     this.inFd = getFileDescriptorIfAvail(in);
     sum = DataChecksum.newDataChecksum(DataChecksum.Type.CRC32, 
         Integer.MAX_VALUE);

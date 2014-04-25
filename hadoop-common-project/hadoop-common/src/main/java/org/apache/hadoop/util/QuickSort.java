@@ -19,6 +19,7 @@ package org.apache.hadoop.util;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.ryan.TimeLog;
 
 /**
  * An implementation of the core algorithm of QuickSort.
@@ -28,6 +29,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 public final class QuickSort implements IndexedSorter {
 
   private static final IndexedSorter alt = new HeapSort();
+  private TimeLog timeLog = new TimeLog(QuickSort.class);
 
   public QuickSort() { }
 
@@ -60,7 +62,12 @@ public final class QuickSort implements IndexedSorter {
   @Override
   public void sort(final IndexedSortable s, int p, int r,
       final Progressable rep) {
-    sortInternal(s, p, r, rep, getMaxDepth(r - p));
+    timeLog.start("sort()", TimeLog.Resource.CPU);
+    try {
+      sortInternal(s, p, r, rep, getMaxDepth(r - p));
+    } finally {
+      timeLog.end("sort()", TimeLog.Resource.CPU);
+    }
   }
 
   private static void sortInternal(final IndexedSortable s, int p, int r,

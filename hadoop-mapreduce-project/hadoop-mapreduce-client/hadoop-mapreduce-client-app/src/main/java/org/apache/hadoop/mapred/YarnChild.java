@@ -49,6 +49,7 @@ import org.apache.hadoop.mapreduce.v2.util.MRApps;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.source.JvmMetrics;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -68,10 +69,21 @@ import org.apache.log4j.LogManager;
 class YarnChild {
 
   private static final Log LOG = LogFactory.getLog(YarnChild.class);
+  private static final TimeLog timeLog = new TimeLog(YarnChild.class);
 
   static volatile TaskAttemptID taskid = null;
 
   public static void main(String[] args) throws Throwable {
+    //timeLog.enableLogging();
+    //timeLog.start("main(String[] args)");
+    try {
+      main2(args);
+    } finally {
+      //timeLog.end("main(String[] args)");
+    }
+  }
+
+  public static void main2(String[] args) throws Throwable {
     Thread.setDefaultUncaughtExceptionHandler(new YarnUncaughtExceptionHandler());
     LOG.debug("Child starting");
 

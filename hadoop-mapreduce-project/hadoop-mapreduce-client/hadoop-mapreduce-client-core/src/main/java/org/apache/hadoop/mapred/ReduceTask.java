@@ -473,6 +473,7 @@ public class ReduceTask extends Task {
       };
     
     // apply reduce function
+    timeLog.start("reduceFunction()", TimeLog.Resource.CPU);
     try {
       //increment processed counter only if skipping feature is enabled
       boolean incrProcCount = SkipBadRecords.getReducerMaxSkipGroups(job)>0 &&
@@ -491,11 +492,11 @@ public class ReduceTask extends Task {
       while (loggingMore(values)) {
         reduceInputKeyCounter.increment(1);
 
-        timeLog.start("values.getKey()");
+        //timeLog.start("values.getKey()");
         try {
           key = values.getKey();
         } finally {
-          timeLog.end("values.getKey()");
+          //timeLog.end("values.getKey()");
         }
 
         reducer.reduce(key, values, collector, reporter);
@@ -504,11 +505,11 @@ public class ReduceTask extends Task {
               SkipBadRecords.COUNTER_REDUCE_PROCESSED_GROUPS, 1);
         }
 
-        timeLog.start("values.nextKey()");
+        //timeLog.start("values.nextKey()");
         try {
           values.nextKey();
         } finally {
-          timeLog.end("values.nextKey()");
+          //timeLog.end("values.nextKey()");
         }
 
         values.informReduceProgress();
@@ -530,6 +531,7 @@ public class ReduceTask extends Task {
       }
       out = null;
     } finally {
+      timeLog.end("reduceFunction()", TimeLog.Resource.CPU);
       IOUtils.cleanup(LOG, reducer);
       closeQuietly(out, reporter);
     }
@@ -537,11 +539,11 @@ public class ReduceTask extends Task {
   }
 
   private <INKEY,INVALUE> boolean loggingMore(ReduceValuesIterator<INKEY,INVALUE> values) {
-    timeLog.start("values.more()");
+    //timeLog.start("values.more()");
     try {
       return values.more();
     } finally {
-      timeLog.end("values.more()");
+      //timeLog.end("values.more()");
     }
   }
 

@@ -43,6 +43,7 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.ReadaheadPool.ReadaheadRequest;
 import org.apache.hadoop.io.nativeio.NativeIO;
 import org.apache.hadoop.net.SocketOutputStream;
+import org.apache.hadoop.ryan.TimeLog;
 import org.apache.hadoop.util.DataChecksum;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -160,7 +161,8 @@ class BlockSender implements java.io.Closeable {
    * See {{@link BlockSender#isLongRead()}
    */
   private static final long LONG_READ_THRESHOLD_BYTES = 256 * 1024;
-  
+  private TimeLog timeLog = new TimeLog(BlockSender.class);
+
 
   /**
    * Constructor
@@ -532,7 +534,8 @@ class BlockSender implements java.io.Closeable {
         verifyChecksum(buf, dataOff, dataLen, numChunks, checksumOff);
       }
     }
-    
+
+    timeLog.start("sendPacket()", TimeLog.Resource.NETWORK);
     try {
       if (transferTo) {
         SocketOutputStream sockOut = (SocketOutputStream)out;
@@ -576,6 +579,8 @@ class BlockSender implements java.io.Closeable {
         }
       }
       throw ioeToSocketException(e);
+    } finally {
+      timeLog.end("sendPacket()", TimeLog.Resource.NETWORK);
     }
 
     if (throttler != null) { // rebalancing so throttle

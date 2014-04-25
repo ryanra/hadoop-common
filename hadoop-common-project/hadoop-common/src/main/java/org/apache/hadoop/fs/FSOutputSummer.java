@@ -146,13 +146,18 @@ abstract public class FSOutputSummer extends OutputStream {
    * this object remains intact.
    */
   protected synchronized void flushBuffer(boolean keep) throws IOException {
-    if (count != 0) {
-      int chunkLen = count;
-      count = 0;
-      writeChecksumChunk(buf, 0, chunkLen, keep);
-      if (keep) {
-        count = chunkLen;
+    timeLog.start("flushBuffer(boolean keep)");
+    try {
+      if (count != 0) {
+        int chunkLen = count;
+        count = 0;
+        writeChecksumChunk(buf, 0, chunkLen, keep);
+        if (keep) {
+          count = chunkLen;
+        }
       }
+    } finally {
+      timeLog.end("flushBuffer(boolean keep)");
     }
   }
 
