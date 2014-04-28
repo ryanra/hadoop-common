@@ -1511,7 +1511,7 @@ public class DFSOutputStream extends FSOutputSummer
     try {
       writeChunk2(b, offset, len, checksum);
     } finally {
-      timeLog.end("writeChunk(byte[] b, int offset, int len, byte[] checksum)");
+      timeLog.end("writeChunk(byte[] b, int offset, int len, byte[] checksum)", len);
     }
 
   }
@@ -1548,7 +1548,12 @@ public class DFSOutputStream extends FSOutputSummer
     }
 
     currentPacket.writeChecksum(checksum, 0, cklen);
-    currentPacket.writeData(b, offset, len);
+    timeLog.start("currentPacket.writeData(b, offset, len)", TimeLog.Resource.CPU);
+    try {
+      currentPacket.writeData(b, offset, len);
+    } finally {
+      timeLog.end("currentPacket.writeData(b, offset, len)", TimeLog.Resource.CPU, len);
+    }
     currentPacket.numChunks++;
     bytesCurBlock += len;
 

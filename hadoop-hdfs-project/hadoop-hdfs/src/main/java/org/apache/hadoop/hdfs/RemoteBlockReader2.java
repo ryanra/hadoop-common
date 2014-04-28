@@ -138,17 +138,17 @@ public class RemoteBlockReader2  implements BlockReader {
         timeLog.start("readNextPacket()", TimeLog.Resource.NETWORK);
         readNextPacket();
       } finally {
-        timeLog.end("readNextPacket()", TimeLog.Resource.NETWORK);
+        timeLog.end("readNextPacket()", TimeLog.Resource.NETWORK, Math.min(curDataSlice.remaining(), len));
       }
     }
     if (curDataSlice.remaining() == 0) {
       // we're at EOF now
       return -1;
     }
-    
+
     int nRead = Math.min(curDataSlice.remaining(), len);
     curDataSlice.get(buf, off, nRead);
-    
+
     return nRead;
   }
 
@@ -160,7 +160,7 @@ public class RemoteBlockReader2  implements BlockReader {
         timeLog.start("readNextPacket()", TimeLog.Resource.NETWORK);
         readNextPacket();
       } finally {
-        timeLog.end("readNextPacket()", TimeLog.Resource.NETWORK);
+        timeLog.end("readNextPacket()", TimeLog.Resource.NETWORK, Math.min(curDataSlice.remaining(), buf.remaining()));
       }
     }
     if (curDataSlice.remaining() == 0) {

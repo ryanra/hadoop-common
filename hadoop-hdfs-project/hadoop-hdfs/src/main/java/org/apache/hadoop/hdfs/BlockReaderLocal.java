@@ -179,8 +179,9 @@ class BlockReaderLocal implements BlockReader {
   private int fillBuffer(FileInputStream stream, ByteBuffer buf)
       throws IOException {
     timeLog.start("fillBuffer(FileInputStream stream, ByteBuffer buf)", TimeLog.Resource.DISK);
+    int bytesRead = -1;
     try {
-      int bytesRead = stream.getChannel().read(buf);
+      bytesRead = stream.getChannel().read(buf);
       if (bytesRead < 0) {
         //EOF
         return bytesRead;
@@ -195,7 +196,7 @@ class BlockReaderLocal implements BlockReader {
       }
       return bytesRead;
     } finally {
-      timeLog.end("fillBuffer(FileInputStream stream, ByteBuffer buf)", TimeLog.Resource.DISK);
+      timeLog.end("fillBuffer(FileInputStream stream, ByteBuffer buf)", TimeLog.Resource.DISK, bytesRead);
     }
   }
   

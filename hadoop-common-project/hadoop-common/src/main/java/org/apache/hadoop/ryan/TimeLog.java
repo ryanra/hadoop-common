@@ -1,7 +1,5 @@
 package org.apache.hadoop.ryan;
 
-import org.codehaus.jackson.map.ObjectMapper;
-
 import java.io.IOException;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -51,9 +49,9 @@ public class TimeLog extends BaseLog {
       nodes.push(new TimerNode(data, minTime));
     }
 
-    public void exitFunction(T data) {
+    public void exitFunction(T data, long info) {
       TimerNode node = nodes.pop();
-      node.stop(data);
+      node.stop(data, info);
       nodes.peek().addFinished(node);
     }
 
@@ -91,7 +89,7 @@ public class TimeLog extends BaseLog {
     public void add(K key, Long value) {
       Long val;
       if (!this.containsKey(key)) {
-        val = new Long(0);
+        val = 0L;
       } else {
         val = this.get(key);
       }
@@ -99,34 +97,64 @@ public class TimeLog extends BaseLog {
     }
   }
 
+  private static class Pair<A, B> {
+
+    public final A first;
+    public final B second;
+
+    public Pair(A first, B second) {
+      this.first = first;
+      this.second = second;
+    }
+
+  }
+
+  private static class SumPairMap<K> extends HashMap<K, Pair<Long, Long>> {
+
+    public void add(K key, Pair<Long, Long> value) {
+      Pair<Long, Long> current;
+      if (!this.containsKey(key)) {
+        current = new Pair<Long, Long>(0L, 0L);
+      } else {
+        current = this.get(key);
+      }
+      this.put(key, new Pair(current.first + value.first, current.second + value.second));
+    }
+  }
+
   private static class TimerNode<T> {
 
     private final MultiMap<T, TimerNode> children;
     private final SumMap<T> aggregates;
+    private final SumMap<T> infos;
     private final long startTime;
     private long endTime;
     private long elapsedTime;
     private final long minTime;
     private T data;
+    private long info;
 
     public TimerNode(T data, long minTime) {
       this.children = new MultiMap<T, TimerNode>();
       this.aggregates = new SumMap<T>();
+      this.infos = new SumMap<T>();
       this.data = data;
       this.minTime = minTime;
       this.startTime = getTime();
+      this.info = -10;
     }
 
     public void stop() {
-      stop(data);
+      stop(data, -5);
     }
 
-    public void stop(T data) {
+    public void stop(T data, long info) {
       this.endTime = getTime();
       if (this.data != data && !this.data.equals(data)) {
         throw new IllegalStateException(this.data + " != " + data);
       }
       this.elapsedTime = endTime - startTime;
+      this.info = info;
     }
 
 
@@ -139,11 +167,14 @@ public class TimeLog extends BaseLog {
         for (Map.Entry<T, Long> agg : child.aggregates.entrySet()) {
           aggregates.add(agg.getKey(), agg.getValue()); // adopt child's aggregates
           child.elapsedTime -= agg.getValue(); // take away appropriate time from child
+          long grandChildInfo = child.infos.get(agg.getKey());
+          infos.add(agg.getKey(), grandChildInfo);
         }
         if (child.children.size() != 0) {
           throw new IllegalStateException("ryanlog: aggregate has non-agg child!");
         }
         aggregates.add(child.data, child.elapsedTime);
+        infos.add(child.data, child.info);
       } else {
         children.add(child.data, child);
       }
@@ -167,6 +198,8 @@ public class TimeLog extends BaseLog {
       stuff.put("endTime", endTime);
       stuff.put("elapsedTime", elapsedTime);
       stuff.put("aggregates", aggregates);
+      stuff.put("combinedInfo", infos);
+      stuff.put("info", info);
       stuff.put("children", mapifyChildren());
       return stuff;
     }
@@ -182,7 +215,7 @@ public class TimeLog extends BaseLog {
   }
 
   public void end(String name, Resource resource) {
-    end(name + " //" + resource);
+    end(name, resource, 1L);
   }
 
   public void start(String name) {
@@ -197,9 +230,18 @@ public class TimeLog extends BaseLog {
 
   public void end(String name) {
     if (isTimingEnabled()) {
-      timers.get().exitFunction(name(name));
+      timers.get().exitFunction(name(name), 1L);
     }
-    //info(name);
+  }
+
+  public void end(String name, long info) {
+    if (isTimingEnabled()) {
+      timers.get().exitFunction(name(name), info);
+    }
+  }
+
+  public void end(String name, Resource resource, long info) {
+    end(name + " //" + resource, info);
   }
 
   private String name(String name) {
