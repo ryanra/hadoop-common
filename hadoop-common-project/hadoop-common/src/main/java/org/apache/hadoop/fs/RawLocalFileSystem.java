@@ -101,28 +101,30 @@ public class RawLocalFileSystem extends FileSystem {
     @Override
     public int read(byte[] data) throws IOException {
       timeLog.start("read(byte[] data)", TimeLog.Resource.DISK);
+      int result = 0;
       try {
-        int result = super.read(data);
+        result = super.read(data);
         if (result != -1) {
           statistics.incrementBytesRead(result);
         }
         return result;
       } finally {
-        timeLog.end("read(byte[] data)", TimeLog.Resource.DISK);
+        timeLog.end("read(byte[] data)", TimeLog.Resource.DISK, result);
       }
     }
     
     @Override
     public int read(byte[] data, int offset, int length) throws IOException {
       timeLog.start("read(byte[] data, int offset, int length)", TimeLog.Resource.DISK);
+      int result = 0;
       try {
-        int result = super.read(data, offset, length);
+        result = super.read(data, offset, length);
         if (result != -1) {
           statistics.incrementBytesRead(result);
         }
         return result;
       } finally {
-        timeLog.end("read(byte[] data, int offset, int length)", TimeLog.Resource.DISK);
+        timeLog.end("read(byte[] data, int offset, int length)", TimeLog.Resource.DISK, result);
       }
     }
   }
@@ -261,7 +263,7 @@ public class RawLocalFileSystem extends FileSystem {
       } catch (IOException e) {                // unexpected exception
         throw new FSError(e);                  // assume native fs error
       } finally {
-        timeLog.end("write(byte[] b, int off, int len)", TimeLog.Resource.DISK);
+        timeLog.end("write(byte[] b, int off, int len)", TimeLog.Resource.DISK, len);
       }
     }
     
