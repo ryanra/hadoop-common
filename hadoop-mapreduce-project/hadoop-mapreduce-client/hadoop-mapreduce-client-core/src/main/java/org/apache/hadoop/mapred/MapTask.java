@@ -1439,6 +1439,7 @@ public class MapTask extends Task {
           // the buffer to soft limit. check if spill or blocking are necessary
           boolean blockwrite = false;
           spillLock.lock();
+          timeLog.start("spillWrite", TimeLog.Resource.SPILL);
           try {
             do {
               checkSpillException();
@@ -1512,6 +1513,7 @@ public class MapTask extends Task {
             } while (blockwrite);
           } finally {
             spillLock.unlock();
+            timeLog.end("spillWrite", TimeLog.Resource.SPILL);
           }
         }
         // here, we know that we have sufficient space to write

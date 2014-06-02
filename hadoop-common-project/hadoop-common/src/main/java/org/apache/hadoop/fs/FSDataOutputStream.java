@@ -52,52 +52,8 @@ public class FSDataOutputStream extends DataOutputStream
                          long pos) throws IOException {
       super(out);
       timeLog.info("OutputStream class: " + out.getClass());
-      timeLog.info("OutputStream" + getWrapped(out.getClass(), out, 20, new HashSet<Object>()));
-      //TODO(ryan): consider using reflection to wrap out.out (which is a BufferedOutputStream)
-      // then we can track all writes and have low overhead!
       statistics = stats;
       position = pos;
-    }
-
-    private List<Object> getWrapped(Class cls, Object base, int depth, Set<Object> avoid) {
-      String field = "out";
-      List<Object> ret = new ArrayList<Object>();
-      if (depth < 0) {
-        return ret;
-      } else {
-        ret.add(base);
-        try {
-          for (Field f : candidates(cls)) {
-            boolean old = f.isAccessible();
-            f.setAccessible(true);
-            Object next = f.get(base);
-            if (base instanceof  BufferedOutputStream && f.getName().equals("out") && !avoid.contains(base) &&
-                !(next instanceof OutputStreamWrapper)) {
-              f.set(base, new OutputStreamWrapper((OutputStream) next));
-              timeLog.info("changing bufferedoutputstream out " + next + ": " + next.getClass());
-              avoid.add(base);
-            }
-            f.setAccessible(old);
-            ret.addAll(getWrapped(next.getClass(), next, depth - 1, avoid));
-          }
-        } catch (IllegalAccessException e) {
-          e.printStackTrace();
-        }
-        return ret;
-      }
-    }
-
-    private List<Field> candidates(Class cls) {
-      List<Field> ret = new ArrayList<Field>();
-      while (cls != Object.class) {
-        for (Field f : cls.getDeclaredFields()) {
-          if (OutputStream.class.isAssignableFrom(f.getType())) {
-            ret.add(f);
-          }
-        }
-        cls = cls.getSuperclass();
-      }
-      return ret;
     }
 
     public void write(int b) throws IOException {

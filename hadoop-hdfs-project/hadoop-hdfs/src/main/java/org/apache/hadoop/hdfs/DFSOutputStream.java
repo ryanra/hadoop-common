@@ -1535,8 +1535,13 @@ public class DFSOutputStream extends FSOutputSummer
     }
 
     if (currentPacket == null) {
-      currentPacket = new Packet(packetSize, chunksPerPacket, 
-          bytesCurBlock);
+      timeLog.start("new Packet()", TimeLog.Resource.CPU);
+      try {
+        currentPacket = new Packet(packetSize, chunksPerPacket,
+            bytesCurBlock);
+      } finally {
+        timeLog.end("new Packet()", TimeLog.Resource.CPU);
+      }
       if (DFSClient.LOG.isDebugEnabled()) {
         DFSClient.LOG.debug("DFSClient writeChunk allocating new packet seqno=" + 
             currentPacket.seqno +
@@ -1657,6 +1662,7 @@ public class DFSOutputStream extends FSOutputSummer
       throws IOException {
     dfsClient.checkOpen();
     checkClosed();
+    timeLog.start("flushOrSync()", TimeLog.Resource.NETWORK);
     try {
       long toWaitFor;
       long lastBlockLength = -1L;
@@ -1769,6 +1775,8 @@ public class DFSOutputStream extends FSOutputSummer
         }
       }
       throw e;
+    } finally {
+      timeLog.end("flushOrSync()", TimeLog.Resource.NETWORK);
     }
   }
 
@@ -1804,18 +1812,23 @@ public class DFSOutputStream extends FSOutputSummer
    * received from datanodes. 
    */
   private void flushInternal() throws IOException {
-    long toWaitFor;
-    synchronized (this) {
-      dfsClient.checkOpen();
-      checkClosed();
-      //
-      // If there is data in the current buffer, send it across
-      //
-      queueCurrentPacket();
-      toWaitFor = lastQueuedSeqno;
-    }
+    timeLog.start("flushInternal()", TimeLog.Resource.NETWORK);
+    try {
+      long toWaitFor;
+      synchronized (this) {
+        dfsClient.checkOpen();
+        checkClosed();
+        //
+        // If there is data in the current buffer, send it across
+        //
+        queueCurrentPacket();
+        toWaitFor = lastQueuedSeqno;
+      }
 
-    waitForAckedSeqno(toWaitFor);
+      waitForAckedSeqno(toWaitFor);
+    } finally {
+      timeLog.end("flushInternal()", TimeLog.Resource.NETWORK);
+    }
   }
 
   private void waitForAckedSeqno(long seqno) throws IOException {
@@ -1889,6 +1902,7 @@ public class DFSOutputStream extends FSOutputSummer
         throw e;
     }
 
+    timeLog.start("close()", TimeLog.Resource.NETWORK);
     try {
       flushBuffer();       // flush from all upper layers
 
@@ -1911,6 +1925,7 @@ public class DFSOutputStream extends FSOutputSummer
       dfsClient.endFileLease(src);
     } finally {
       closed = true;
+      timeLog.end("close()", TimeLog.Resource.NETWORK);
     }
   }
 
