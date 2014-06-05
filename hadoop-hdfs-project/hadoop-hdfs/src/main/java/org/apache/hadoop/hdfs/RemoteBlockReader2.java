@@ -133,12 +133,13 @@ public class RemoteBlockReader2  implements BlockReader {
   public synchronized int read(byte[] buf, int off, int len) 
                                throws IOException {
 
+    TimeLog.Resource resource = isLocal() ? TimeLog.Resource.DISK : TimeLog.Resource.NETWORK;
     if (curDataSlice == null || curDataSlice.remaining() == 0 && bytesNeededToFinish > 0) {
       try {
-        timeLog.start("readNextPacket()", TimeLog.Resource.NETWORK);
+        timeLog.start("readNextPacket()", resource);
         readNextPacket();
       } finally {
-        timeLog.end("readNextPacket()", TimeLog.Resource.NETWORK, Math.min(curDataSlice.remaining(), len));
+        timeLog.end("readNextPacket()", resource, Math.min(curDataSlice.remaining(), len));
       }
     }
     if (curDataSlice.remaining() == 0) {
