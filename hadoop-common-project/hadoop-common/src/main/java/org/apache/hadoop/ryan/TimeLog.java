@@ -30,6 +30,7 @@ public class TimeLog extends BaseLog {
     private final Stack<TimerNode<T>> nodes;
     private long invokedCount = 0;
     private final long gcStart = getGCTime();
+    public final Map<Object, Object> taskStuff = new HashMap();
 
     public TimerTree() {
       this.nodes = new Stack<TimerNode<T>>();
@@ -66,8 +67,10 @@ public class TimeLog extends BaseLog {
       topLevel.put("timerRoot", mapified);
       topLevel.put("invokedCount", invokedCount);
       topLevel.put("gcTime", getGCTime() - gcStart);
+      topLevel.put("taskStuff", taskStuff);
       return topLevel;
     }
+
   }
 
   private static class MultiMap<K, V> extends HashMap<K, List<V>> {
@@ -260,6 +263,10 @@ public class TimeLog extends BaseLog {
   public void logTimingData() {
     infoObj(timers.get().extractTimes());
     timers.remove();
+  }
+
+  public void infoAttached(Object key, Object value) {
+    timers.get().taskStuff.put(key, value);
   }
 
   public enum Resource {

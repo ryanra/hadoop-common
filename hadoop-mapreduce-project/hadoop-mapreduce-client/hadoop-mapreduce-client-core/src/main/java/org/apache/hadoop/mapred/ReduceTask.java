@@ -388,6 +388,7 @@ public class ReduceTask extends Task {
       } finally {
         timeLog.end("shuffleConsumerPlugin.run()", TimeLog.Resource.SHUFFLE);
       }
+      timeLog.infoAttached("shuffleBytes", shuffleContext.getReduceShuffleBytes().getValue());
     } else {
       // local job runner doesn't have a copy phase
       timeLog.info("isLocal == true!");

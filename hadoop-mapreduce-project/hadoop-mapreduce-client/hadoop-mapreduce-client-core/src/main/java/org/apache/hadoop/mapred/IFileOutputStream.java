@@ -51,7 +51,6 @@ public class IFileOutputStream extends FilterOutputStream {
    */
   public IFileOutputStream(OutputStream out) {
     super(out);
-    timeLog.info("IFile OutputStream class: " + out.getClass());
     sum = DataChecksum.newDataChecksum(DataChecksum.Type.CRC32,
         Integer.MAX_VALUE);
     barray = new byte[sum.getChecksumSize()];

@@ -51,7 +51,6 @@ public class FSDataOutputStream extends DataOutputStream
                          FileSystem.Statistics stats,
                          long pos) throws IOException {
       super(out);
-      timeLog.info("OutputStream class: " + out.getClass());
       statistics = stats;
       position = pos;
     }
@@ -107,7 +106,6 @@ public class FSDataOutputStream extends DataOutputStream
                             long startPosition) throws IOException {
     super(new PositionCache(out, stats, startPosition));
     wrappedStream = out;
-    timeLog.info("OutputStream class: " + out.getClass());
   }
   
   /**
